@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ML Paper Summarizer | Matrix Edition</title>
+  <style>
+    :root {
+      --matrix-green: #00ff41;
+      --matrix-dark-green: #003b09;
+      --matrix-black: #0a0e0a;
+      --glow-effect: 0 0 10px var(--matrix-green), 0 0 20px var(--matrix-green);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Courier New', monospace;
+    }
+    
+    body {
+      background-color: var(--matrix-black);
+      color: var(--matrix-green);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .matrix-rain {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    .container {
+      background-color: rgba(0, 15, 0, 0.85);
+      padding: 2rem;
+      border-radius: 8px;
+      border: 1px solid var(--matrix-green);
+      box-shadow: 0 0 15px var(--matrix-dark-green);
+      width: 80%;
+      max-width: 800px;
+      z-index: 10;
+      position: relative;
+    }
+    
+    h1 {
+      color: var(--matrix-green);
+      text-shadow: var(--glow-effect);
+      margin-bottom: 1.5rem;
+      letter-spacing: 2px;
+      font-size: 2.5rem;
+      position: relative;
+      display: inline-block;
+    }
+    
+    h1::after {
+      content: "";
+      position: absolute;
+      bottom: -10px;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background-color: var(--matrix-green);
+      box-shadow: var(--glow-effect);
+    }
+    
+    .input-container {
+      position: relative;
+      margin: 2rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    #paperInput {
+      background-color: rgba(0, 20, 0, 0.7);
+      border: 1px solid var(--matrix-green);
+      color: var(--matrix-green);
+      padding: 1rem;
+      border-radius: 4px;
+      width: 100%;
+      font-size: 1rem;
+      box-shadow: 0 0 5px var(--matrix-dark-green);
+      outline: none;
+      transition: all 0.3s ease;
+    }
+    
+    #paperInput:focus {
+      box-shadow: 0 0 10px var(--matrix-green);
+    }
+    
+    button {
+      background-color: var(--matrix-dark-green);
+      color: var(--matrix-green);
+      border: 1px solid var(--matrix-green);
+      padding: 0.8rem 1.5rem;
+      cursor: pointer;
+      font-size: 1rem;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: bold;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    button::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(transparent, transparent, transparent, var(--matrix-green));
+      transform: rotate(45deg);
+      opacity: 0.1;
+      transition: all 0.3s ease;
+    }
+    
+    button:hover {
+      box-shadow: 0 0 15px var(--matrix-green);
+    }
+    
+    button:hover::after {
+      animation: glitch 1.5s linear forwards;
+    }
+    
+    @keyframes glitch {
+      0% {
+        transform: translateX(-100%) rotate(45deg);
+      }
+      100% {
+        transform: translateX(100%) rotate(45deg);
+      }
+    }
+    
+    #summaryResult {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      border: 1px solid var(--matrix-green);
+      border-radius: 4px;
+      background-color: rgba(0, 10, 0, 0.5);
+      text-align: left;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+      height: 0;
+      overflow: hidden;
+    }
+    
+    #summaryResult.active {
+      opacity: 1;
+      transform: translateY(0);
+      height: auto;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .terminal-line {
+      display: flex;
+      margin-bottom: 0.5rem;
+    }
+    
+    .terminal-prompt {
+      color: var(--matrix-green);
+      margin-right: 0.5rem;
+    }
+    
+    .loading {
+      display: inline-block;
+      position: relative;
+      width: 100%;
+      height: 20px;
+    }
+    
+    .loading::after {
+      content: "...";
+      position: absolute;
+      animation: loading 1s infinite;
+    }
+    
+    @keyframes loading {
+      0% { content: "."; }
+      33% { content: ".."; }
+      66% { content: "..."; }
+      100% { content: "."; }
+    }
+    
+    .blinking-cursor {
+      display: inline-block;
+      width: 10px;
+      height: 20px;
+      background-color: var(--matrix-green);
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    
+    .glitch-effect {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .glitch-effect::before,
+    .glitch-effect::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .glitch-effect.active-glitch::before,
+    .glitch-effect.active-glitch::after {
+      opacity: 0.8;
+    }
+    
+    .glitch-effect.active-glitch::before {
+      color: #0ff;
+      z-index: -1;
+      animation: glitch-effect 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+      animation-delay: 0.1s;
+    }
+    
+    .glitch-effect.active-glitch::after {
+      color: #f0f;
+      z-index: -2;
+      animation: glitch-effect 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) reverse both infinite;
+      animation-delay: 0.2s;
+    }
+    
+    @keyframes glitch-effect {
+      0% {
+        transform: translate(0);
+      }
+      20% {
+        transform: translate(-3px, 3px);
+      }
+      40% {
+        transform: translate(-3px, -3px);
+      }
+      60% {
+        transform: translate(3px, 3px);
+      }
+      80% {
+        transform: translate(3px, -3px);
+      }
+      100% {
+        transform: translate(0);
+      }
+    }
+    
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: var(--matrix-black);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: var(--matrix-dark-green);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--matrix-green);
+    }
+  </style>
+</head>
+<body>
+  <div class="matrix-rain" id="matrixCanvas"></div>
+  
+  <div class="container">
+    <h1 class="glitch-effect" data-text="ML PAPER SUMMARIZER">ML PAPER SUMMARIZER</h1>
+    
+    <div class="input-container">
+      <input type="text" id="paperInput" placeholder="Enter ML paper title..." autocomplete="off">
+      <button onclick="fetchSummary()">DECODE PAPER</button>
+    </div>
+    
+    <div id="summaryResult"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      document.getElementById('matrixCanvas').appendChild(canvas);
+      
+      const ctx = canvas.getContext('2d');
+      
+      const matrixChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}';
+      const fontSize = 14;
+      const columns = canvas.width / fontSize;
+      
+      const drops = [];
+      for (let i = 0; i < columns; i++) {
+        drops[i] = 1;
+      }
+      
+      function drawMatrixRain() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#00ff41'; 
+        ctx.font = `${fontSize}px monospace`;
+        
+        for (let i = 0; i < drops.length; i++) {
+          const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          
+          ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+          
+          if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) {
+            drops[i] = 0;
+          }
+          
+          drops[i]++;
+        }
+      }
+      
+      window.addEventListener('resize', function() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const columns = canvas.width / fontSize;
+        for (let i = 0; i < columns; i++) {
+          drops[i] = 1;
+        }
+      });
+      
+      setInterval(drawMatrixRain, 35);
+    });
+    
+    async function fetchSummary() {
+      const paperTitle = document.getElementById('paperInput').value.trim();
+      const summaryResult = document.getElementById('summaryResult');
+      
+      if (!paperTitle) {
+        summaryResult.innerHTML = '<div class="terminal-line"><span class="terminal-prompt">[ERROR]:</span> Please enter a paper title.</div>';
+        summaryResult.classList.add('active');
+        return;
+      }
+      
+      summaryResult.innerHTML = '<div class="terminal-line"><span class="terminal-prompt">[SYSTEM]:</span> Decoding paper information<span class="loading"></span></div>';
+      summaryResult.classList.add('active');
+      
+      try {
+        const response = await fetch('/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: paperTitle })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Network response was not ok: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        typeWriter(data.summary, summaryResult);
+      } catch (error) {
+        summaryResult.innerHTML = `<div class="terminal-line"><span class="terminal-prompt">[ERROR]:</span> Failed to fetch summary: ${error.message}</div>`;
+      }
+    }
+    
+    function typeWriter(text, element) {
+      element.innerHTML = "";
+      element.classList.add('active');
+      
+      let i = 0;
+      const terminalLines = text.split('\n');
+      let currentLine = 0;
+      
+      function typeLine() {
+        if (currentLine < terminalLines.length) {
+          const line = document.createElement('div');
+          line.className = 'terminal-line';
+          element.appendChild(line);
+          
+          const prompt = document.createElement('span');
+          prompt.className = 'terminal-prompt';
+          prompt.textContent = '[MATRIX]:';
+          line.appendChild(prompt);
+          
+          const content = document.createElement('span');
+          content.className = 'terminal-content';
+          line.appendChild(content);
+          
+          let charIndex = 0;
+          const lineText = terminalLines[currentLine];
+          
+          function typeChar() {
+            if (charIndex < lineText.length) {
+              content.textContent += lineText.charAt(charIndex);
+              charIndex++;
+              setTimeout(typeChar, 10 + Math.random() * 20); 
+            } else {
+              currentLine++;
+              setTimeout(typeLine, 100);
+            }
+          }
+          
+          typeChar();
+        } else {
+          const cursorLine = document.createElement('div');
+          cursorLine.className = 'terminal-line';
+          element.appendChild(cursorLine);
+          
+          const prompt = document.createElement('span');
+          prompt.className = 'terminal-prompt';
+          prompt.textContent = '[SYSTEM]:';
+          cursorLine.appendChild(prompt);
+          
+          const cursor = document.createElement('span');
+          cursor.className = 'blinking-cursor';
+          cursorLine.appendChild(cursor);
+        }
+      }
+      
+      typeLine();
+    }
+    
+    function formatSummary(summary) {
+      return summary;
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      const title = document.querySelector('h1.glitch-effect');
+      
+      title.addEventListener('mouseover', function() {
+        this.classList.add('active-glitch');
+      });
+      
+      title.addEventListener('mouseout', function() {
+        this.classList.remove('active-glitch');
+      });
+    });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      const input = document.getElementById('paperInput');
+      
+      input.addEventListener('focus', function() {
+        this.placeholder = '> awaiting input_';
+      });
+      
+      input.addEventListener('blur', function() {
+        this.placeholder = 'Enter ML paper title...';
+      });
+    });
+  </script>
+</body>
+</html>
